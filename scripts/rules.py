@@ -35,7 +35,12 @@ Off when `rules` ("Rule checks" in /claude-jev or /config) is off.
 
 import concurrent.futures
 import datetime
-import fcntl
+try:
+    import fcntl
+    _HAS_FCNTL = True
+except ImportError:
+    fcntl = None
+    _HAS_FCNTL = False
 import hashlib
 import json
 import os
@@ -941,12 +946,18 @@ def update_state(session_id: str, change):
     parallel PostToolUse hooks cannot drop each other's hunks. Returns what
     `change` returns."""
     os.makedirs(BLOCK_DIR, exist_ok=True)
-    with open(session_path(session_id) + ".lock", "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)
+    lock_file = open(session_path(session_id) + ".lock", "w")
+    if _HAS_FCNTL:
+        fcntl.flock(lock_file, fcntl.LOCK_EX)
+    try:
         state = session_state(session_id)
         result = change(state)
         save_state(session_id, state)
         return result
+    finally:
+        if _HAS_FCNTL:
+            fcntl.flock(lock_file, fcntl.LOCK_UN)
+        lock_file.close()
 
 
 def enter_turn(state: dict, turn: str) -> None:
