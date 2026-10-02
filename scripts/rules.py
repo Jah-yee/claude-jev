@@ -35,12 +35,6 @@ Off when `rules` ("Rule checks" in /claude-jev or /config) is off.
 
 import concurrent.futures
 import datetime
-try:
-    import fcntl
-    _HAS_FCNTL = True
-except ImportError:
-    fcntl = None
-    _HAS_FCNTL = False
 import hashlib
 import json
 import os
@@ -50,6 +44,11 @@ import stat
 import subprocess
 import sys
 import time
+
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import comparators
@@ -729,8 +728,7 @@ TYPEISH = re.compile(
     r"->\s*[\w\[\]]+|\bSchema\b)"
 )
 ERRORISH = re.compile(
-    r"(?i)\b(try|catch|except|finally|throw|raise|Result|Error|Exception|"
-    r"panic|rescue)\b"
+    r"(?i)\b(try|catch|except|finally|throw|raise|Result|Error|Exception|" r"panic|rescue)\b"
 )
 
 SUBJECT_TESTS = {
@@ -947,7 +945,7 @@ def update_state(session_id: str, change):
     `change` returns."""
     os.makedirs(BLOCK_DIR, exist_ok=True)
     lock_file = open(session_path(session_id) + ".lock", "w")
-    if _HAS_FCNTL:
+    if fcntl:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
     try:
         state = session_state(session_id)
@@ -955,7 +953,7 @@ def update_state(session_id: str, change):
         save_state(session_id, state)
         return result
     finally:
-        if _HAS_FCNTL:
+        if fcntl:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
         lock_file.close()
 
