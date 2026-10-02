@@ -50,6 +50,11 @@ try:
 except ImportError:
     fcntl = None
 
+try:
+    import msvcrt
+except ImportError:
+    msvcrt = None
+
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import comparators
 import jev
@@ -947,6 +952,8 @@ def update_state(session_id: str, change):
     lock_file = open(session_path(session_id) + ".lock", "w")
     if fcntl:
         fcntl.flock(lock_file, fcntl.LOCK_EX)
+    elif msvcrt:
+        msvcrt.locking(lock_file.fileno(), msvcrt.LK_LOCK, 1)
     try:
         state = session_state(session_id)
         result = change(state)
@@ -955,6 +962,8 @@ def update_state(session_id: str, change):
     finally:
         if fcntl:
             fcntl.flock(lock_file, fcntl.LOCK_UN)
+        elif msvcrt:
+            msvcrt.locking(lock_file.fileno(), msvcrt.LK_UNLOCK, 1)
         lock_file.close()
 
 
